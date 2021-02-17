@@ -1,79 +1,63 @@
 import fastify from 'fastify';
-// see axios doc on how to use it
 import axios from 'axios';
 
 const app = fastify({ logger: true });
-var facts = {};
-var fox = {};
-var res = {};
 
-function getFacts() {
-  return axios.get('https://cat-fact.herokuapp.com/facts');
-}
 
-let promise1 = new Promise((resolve, reject) => {
-  axios.get('https://cat-fact.herokuapp.com/facts').then(function(result) {
-    return result;
+
+
+const getFacts = () =>{
+  return new Promise(resolve => {axios.get('https://cat-fact.herokuapp.com/facts/random?animal_type=cat&amount=3')
+  .then(res => {
+    let facts = [];
+    let i = 0;
+    while (i < res.data.length) {
+      facts.push(res.data[i].text);
+      i++;
+    }
+    resolve(facts);
+  }).catch(fail => resolve(null));});
+};
+
+const getFoxImage = () =>{
+  return new Promise(resolve => {
+    axios.get('https://randomfox.ca/floof/')
+    .then(res => {resolve(res.data.image)})
+    .catch(fail => resolve(null));
   });
-});
+};
 
+const getDays = (countryCode ) => {
+  return new Promise(resolve => {
+    axios.get('https://date.nager.at/api/v2/publicholidays/2021/'+countryCode)
+    .then(res => {resolve(res.data)})
+    .catch(fail => resolve(null));
+  });
+};
 
-function getFox() {
-  return axios.get('https://randomfox.ca/floof/');
-}
-function first() {
- Promise.all([getFacts(), getFox()])
-  .then(function (results) {
-    const acct = results[0];
-    const perm = results[1]; 
-    //console.log(acct['data'][1]['text']); 
-    //console.log(perm['data']['image']); 
-    creationJson(acct, perm);
-  }); 
-}
-
-function creationJson(fact,fox){
-  facts = fact;
-  let companies =
-    `[
-       {
-          "foxPicture": `+fox['data']['image']+`,
-          "catFacts": [
-            `+fact['data'][1]['text']+
-              fact['data'][2]['text']+
-              fact['data'][3]['text']+`
-          ],
-          "ceo": "Neil",
-          "rating": 3.6
-        },
-        {
-          "name": "Small startup",
-          "numberOfEmployees": 10,
-          "ceo": null,
-          "rating": 4.3
-       }
-    ]`
-    return companies;
-    
-}
-
+const getAll = () => {
+  return Promise.all([getFacts(),getFoxImage(),getDays('FR')]).then(res => {
+    let data = {};
+    data['fox'] = res[1];
+    data['cat'] = res[0];
+    data['days'] = res[2];
+    return data;
+  });
+};
 
 
 app.get('/', async (req, res) => {
-  return {
-    message: `Welcome to Node Babel with ${
-      req.body?.testValue ?? 'no testValue'
-    }`,
-  };
+  return getAll();
 });
 
-app.get('/facts',async (req, res) => {
-  
-    return creationJson();
-    
+app.get('/facts', async (req, res) => {
+  return getFacts();
 });
 
-// Run the server!
+app.get('/fox', async (req, res) => {
+  return getFoxImage();
+});
+
 const start = async () => {
   try {
     await app.listen(5000);
